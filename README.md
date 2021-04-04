@@ -24,6 +24,7 @@
 - Use customized Jenkins agent to optimize CI/CD pipeline
 - Event-driven architecture on Microservices application
 - Distributed transactions management on Microservices application
+- Behavior Driven Development(BDD) with Cucumber
 
 
 
