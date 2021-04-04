@@ -13,6 +13,7 @@
 - Jenkins pipeline on OpenShift
 - Use Yaml files to deploy application to OpenShift
 - Canary Deployment and Blue Green Deployment on OpenShift
+- Test Driven Development (TDD) on SpringBoot application
 
 
 
@@ -21,6 +22,8 @@
 - Migrate Spring Cloud Application to OpenShift Service Mesh
 - Use Helm chart to deploy application to OpenShift
 - Use customized Jenkins agent to optimize CI/CD pipeline
+- Event-driven architecture on Microservices application
+- Distributed transactions management on Microservices application
 
 
 
