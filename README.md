@@ -10,7 +10,7 @@
 
 - [Deploy Spring Boot Application to OpenShift](./docs/deploy_spring_boot_app_to_ocp.md)
 - Deploy Spring Cloud Applicatin to OpenShift
-- Jenkins pipeline on OpenShift
+- [Jenkins pipeline on OpenShift](./docs/ocp_pipeline_jenkins.md)
 - Use Yaml files to deploy application to OpenShift
 - Canary Deployment and Blue Green Deployment on OpenShift
 - Test Driven Development (TDD) on SpringBoot application

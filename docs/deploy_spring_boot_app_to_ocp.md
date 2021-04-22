@@ -13,7 +13,7 @@ Deploy a Spring Boot Application to OpenShift to demonstrate:
 
 
 
-DevOps process(part): code -> build -> deployment -> operate.
+DevOps process(part): code -> build -> deploy -> operate.
 
 
 
@@ -89,6 +89,23 @@ Try to add a new owner, and then find the owner by the last name.
 
 
 
+### Login OpenShift
+
+Login with user and password:
+
+```bash
+oc login -u <user> -p <password> <API_URL>
+```
+
+
+
+Or login by user and token:
+
+- Open OpenShift web console, click current username, and then choose "Copy login command".
+- Or run `oc whoami -t` to get token of current session.
+
+
+
 ### Create Project
 
 ```bash
@@ -136,11 +153,13 @@ oc rollout status dc mysql
 oc get imagestream -n openshift | grep openjdk
 oc get imagestreamtag -n openshift | grep openjdk
 
-# must provide exact builder image name and tag
+# must provide exact builder image name and tag  
+# Note: The spring-petclinic demo only be verified by rhel7 image
 oc new-app openjdk-11-rhel7:1.1~https://github.com/stp-demo-minilab/spring-petclinic.git \
   --context-dir=. \
   --name=spring-petclinic \
   --as-deployment-config=false
+  
   
 # add env vars
 # TODO: use mysql secret inject deployment environments
@@ -152,22 +171,12 @@ oc set env deployment spring-petclinic \
    MYSQL_PASS=petclinic
    
 
-# TODO: rollout and rollback
-# manual rollout 
-# oc rollout latest deployment spring-petclinic
-
-# pause rollout 
-# oc rollout pause deployment spring-petclinic
-
-# resume rollout 
-# oc rollout resume deployment spring-petclinic
 
 
 # Add triggers for deployment
 # Deployments support triggering off of image changes and on config changes
 oc set triggers deployment spring-petclinic --from-config=true
 oc set triggers deployment spring-petclinic --from-image="$GUID-petclinic/spring-petclinic:latest" -c spring-petclinic
-
 
 
 # check rollout status
@@ -209,15 +218,21 @@ oc rsh $(oc get pods | grep mysql | awk '/Running/ {print $1}')
 Verify new added owner in petclinic MySQL database:
 
 ```sql
+-- login mysql database in mysql pod
 mysql -u root -h mysql -p
 
 petclinic
+
+-- veirfy data
 
 use petclinic;
 show tables;
 
 select * from owners;
 
+-- exit
+exit
+exit
 ```
 
 
@@ -257,10 +272,10 @@ watch oc get pods
 
 
 
-### Use mirror Maven repo (optional)
+### Use mirror Maven repository (optional)
 
 ```bash
-# Use Mirror Dependencies Repository when build if necessary
+# Use Mirror Dependencies Repository to speed up downloading dependencies when build if necessary
 oc set env bc spring-petclinic MAVEN_MIRROR_URL="https://maven.aliyun.com/repository/public"
 
 # start build
@@ -272,13 +287,27 @@ oc logs -f $(oc get pods | grep build | awk '/Running/ {print $1}')
 
 
 
-### Use local (cached) maven repo (optional)
+References:
+
+- https://www.openshift.com/blog/improving-build-time-java-builds-openshift
+
+
+
+### Use local (cached) maven repo (optional) // TODO
 
 Use local (cached) maven repo to speed up build process.
 
 ```bash
 # TODO
 ```
+
+We will demostrate this feature in OpenShift pipeline demo.
+
+
+
+References:
+
+- https://www.openshift.com/blog/decrease-maven-build-times-openshift-pipelines-using-persistent-volume-claim
 
 
 
@@ -336,6 +365,18 @@ watch oc get pods
 
 
 In OpenShift, check "Triggered by" and "Git Commit" info in the new running build.
+
+
+
+### Rollout and rollback（TODO)
+
+Deploy a new versioned application.
+
+Rollback to previous version when deployment failed.
+
+In this demo, when you check in code, it will trigger auto deployment.
+
+We will demostrate rollout and rollback operations in image deployment demo.
 
 
 
@@ -410,25 +451,59 @@ oc edit deployment spring-petclinic
 
 
 
-### Logging aggreation
+### Logging
+
+In OpenShift, switch to Admin view, and open Monitoring / Logging, and then redirect to Kibana to search aggregated logs.
+
+> TODO
 
 
 
-
+OpenShift cluster need configure logging slack (EFK) firstly.
 
 ### Monitoring
 
+In OpenShift, switch to Developer view, and open Monitoring.
+
+> TODO
 
 
-### Jolokia
 
-Monitor JVM ?
+OpenShift cluster need configure monitoring slack (Prometheus + Grafana) firstly.
+
+
+
+### Monitor JVM (Deprecated)
+
+Use [Jolokia](https://jolokia.org/) monitor JVM in OpenShift.
+
+> TODO
+
+
+
+> Jolokia features are deprecated in OpenShift 4
+
+References:
+
+- https://developers.redhat.com/blog/2016/03/30/jolokia-jvm-monitoring-in-openshift/
+- https://docs.openshift.com/online/pro/architecture/infrastructure_components/web_console.html
 
 
 
 
 
 ## Export resources as Yaml
+
+
+
+```bash
+mkdir -p openshift/yaml/mysql
+mkdir -p openshift/yaml/spring-petclinic
+
+cd openshift/yaml
+```
+
+
 
 ```bash
 # project specific resources
@@ -438,20 +513,21 @@ oc get all -o name \
   | grep -v "replicaset" \
   | grep -v "replicationcontroller"
 
-cd openshift/yaml
 
-oc get service/mysql -o yaml > service-mysql.yaml
-oc get service/spring-petclinic -o yaml > service-spring-petclinic.yaml
-oc get deployment.apps/spring-petclinic -o yaml > deployment-spring-petclinic.yaml
-oc get deploymentconfig.apps.openshift.io/mysql -o yaml > deploymentconfig-mysql.yaml
-oc get buildconfig.build.openshift.io/spring-petclinic -o yaml > buildconfig-spring-petclinic.yaml
-oc get imagestream.image.openshift.io/spring-petclinic -o yaml > imagestream-spring-petclinic.yaml
-oc get route.route.openshift.io/spring-petclinic -o yaml > route-spring-petclinic.yaml
+# mysql
+oc get deploymentconfig.apps.openshift.io/mysql -o yaml > ./mysql/deploymentconfig-mysql.yaml
+oc get service/mysql -o yaml > ./mysql/service-mysql.yaml
+oc get secret mysql -o yaml > ./mysql/secret-mysql.yaml
 
-# non-project specific resources
-# no configmap in this example
-# Notes: Kubernetes secret is not a real secret.
-oc get secret mysql -o yaml > secret-mysql.yaml
+
+# spring-petclinic
+oc get deployment.apps/spring-petclinic -o yaml > ./spring-petclinic/deployment-spring-petclinic.yaml
+oc get buildconfig.build.openshift.io/spring-petclinic -o yaml > ./spring-petclinic/buildconfig-spring-petclinic.yaml
+oc get imagestream.image.openshift.io/spring-petclinic -o yaml > ./spring-petclinic/imagestream-spring-petclinic.yaml
+oc get service/spring-petclinic -o yaml > ./spring-petclinic/service-spring-petclinic.yaml
+oc get route.route.openshift.io/spring-petclinic -o yaml > ./spring-petclinic/route-spring-petclinic.yaml
+
+
 ```
 
 
@@ -462,12 +538,36 @@ Remove temp and namespace specific fields in exported yaml files.
 
 
 
-## Clean resources (optional)
+## Clean and redeploy resources (optional)
+
+Clean and redeploy resources by OpenShift Yaml files to show Infrasture as Code.
+
+
 
 ```bash
 # delete resources under project
 oc delete project "$GUID-petclinic"
+
+# create project
+oc new-project "$GUID-petclinic" --display-name "Spring PetClinic"
+
+
+# deploy mysql firstly
+cd openshift/yaml
+
+oc apply -f ./mysql
+
+# watch mysql deployment until it is ready
+watch oc get pods
+
+# and then deploy spring-petclinic
+oc apply -f ./spring-petclinic
+
+# watch spring-petclinic deployment until it is ready
+watch oc get pods
 ```
+
+
 
 
 
@@ -589,7 +689,6 @@ podman images
 ### Use Skopeo inspect and copy images
 
 ```bash
-# TODO
 skopeo inspect docker://${REGISTRY}/<namespace>/<image>
 ```
 
@@ -605,10 +704,21 @@ echo "oc login --token=$(oc whoami -t) $(oc whoami --show-server)"
 
 
 
+### Updating deployment
 
+```bash
+oc rollout restart deployment spring-petclinic
+```
+
+
+
+References:
+
+- https://kubernetes.io/docs/reference/kubectl/cheatsheet/#updating-resources
 
 ## References
 
 - [OpenShift Container Platform 4.6 Documentation](https://docs.openshift.com/container-platform/4.6/welcome/index.html)
 - [Understanding OpenShift Container Platform development](https://docs.openshift.com/container-platform/4.6/architecture/understanding-development.html)
+- <https://github.com/rht-labs/ubiquitous-journey>
 
